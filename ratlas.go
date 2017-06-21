@@ -1,3 +1,6 @@
+// Package ratlas generates rune atlas images given the glyphs of a ttf font.
+// Examples are still being written to test the accuracy of exported data.
+// Support for other font formats and export formats pending.
 package ratlas
 
 import (
@@ -288,7 +291,7 @@ func (atlas *Atlas) ScaleNumbers(v float32) {
     atlasItem.BearingX *= v
     atlasItem.Descent *= v
     atlasItem.Width = int(float32(atlasItem.Width)*v)
-    atlasItem.Height = int(float32(atlasItem.Width)*v)
+    atlasItem.Height = int(float32(atlasItem.Height)*v)
     
     atlasItem.Node.X = int(float32(atlasItem.Node.X)*v)
     atlasItem.Node.Y = int(float32(atlasItem.Node.Y)*v)
@@ -296,6 +299,10 @@ func (atlas *Atlas) ScaleNumbers(v float32) {
     atlasItem.Node.H = atlasItem.Height
   }
   log.Println("Scaled Atlas numbers by", v)
+}
+
+func (atlas *Atlas) Kern(a, b rune) float32 {
+  return fixedFloat(atlas.Face.Kern(a, b))
 }
 
 // FontAtlasFromRunes returns a Atlas of a given font for a given slice of runes.
@@ -326,11 +333,11 @@ func New(fontFileName string, fontPt, fontRes float64, imgWidth, imgHeight, pad 
     maxX := bounds.Max.X.Ceil()
     maxY := bounds.Max.Y.Ceil()
     atlasItem.Advance = fixedFloat(advance)
-    // fmt.Printf("%s {%v, %v} {%v, %v} %v\n", string(r), minX, minY, maxX, maxY, atlasItem.Advance)
+    fmt.Printf("%s {%v, %v} {%v, %v} %v\n", string(r), minX, minY, maxX, maxY, atlasItem.Advance)
     
     atlasItem.BearingX = fixedFloat(bounds.Min.X) - float32(pad)
     atlasItem.Descent = float32(maxY) + (fixedFloat(bounds.Min.Y) - float32(minY)) + float32(pad)
-    // ^ not sure if tiny middle add is needed
+    // ^ not sure if tiny middle add is needed, still WIP
     // fmt.Printf("%s x %v, descent %v\n", string(r), atlasItem.BearingX, atlasItem.Descent)
     
     glyphWidth := maxX - minX + pad*2
