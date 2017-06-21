@@ -333,7 +333,7 @@ func New(fontFileName string, fontPt, fontRes float64, imgWidth, imgHeight, pad 
     maxX := bounds.Max.X.Ceil()
     maxY := bounds.Max.Y.Ceil()
     atlasItem.Advance = fixedFloat(advance)
-    fmt.Printf("%s {%v, %v} {%v, %v} %v\n", string(r), minX, minY, maxX, maxY, atlasItem.Advance)
+    // fmt.Printf("%s {%v, %v} {%v, %v} %v\n", string(r), minX, minY, maxX, maxY, atlasItem.Advance)
     
     atlasItem.BearingX = fixedFloat(bounds.Min.X) - float32(pad)
     atlasItem.Descent = float32(maxY) + (fixedFloat(bounds.Min.Y) - float32(minY)) + float32(pad)
