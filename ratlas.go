@@ -24,6 +24,7 @@ func fixedFloat(v fixed.Int26_6) float32 {
   return float32(v)/64.0
 }
 
+// AtlasItem contains all the information needed to draw a specific rune within an Atlas.
 type AtlasItem struct {
   Rune rune
   Advance float32
@@ -35,42 +36,41 @@ type AtlasItem struct {
   PercentHeight float32
   Width int
   Height int
-  Node *Node
+  Node *node
   ImageIndex int
 }
 
 type Atlas struct {
   Face font.Face
   FontPt float64
-  FontRes float64
   Pad int
   
   Items map[rune]*AtlasItem
   Images []draw.Image
 }
 
-// AtlasItems implements Sort interface for slice of AtlasItem
+// atlasItems implements Sort interface for slice of AtlasItem
 // This is needed for the somewhat redundant packing algorithm
-type AtlasItems []*AtlasItem
-func (slice AtlasItems) Len() int {
+type atlasItems []*AtlasItem
+func (slice atlasItems) Len() int {
     return len(slice)
 }
-func (slice AtlasItems) Less(i, j int) bool {
+func (slice atlasItems) Less(i, j int) bool {
     // return slice[i].Height + slice[i].Width * slice[i].Height > slice[j].Height + slice[j].Width * slice[j].Height
     return slice[i].Height > slice[j].Height
 }
-func (slice AtlasItems) Swap(i, j int) {
+func (slice atlasItems) Swap(i, j int) {
     slice[i], slice[j] = slice[j], slice[i]
 }
 
 // Node contains 2D bin packing implementation for sorting glyphs into atlas image
-type Node struct {
+type node struct {
   Used bool
-  Right *Node
-  Down *Node
+  Right *node
+  Down *node
   X, Y, W, H int
 }
-func (atlas Atlas) ContainsNilNodes() bool {
+func (atlas Atlas) containsNilNodes() bool {
   for _, atlasItem := range atlas.Items {
     if atlasItem.Node == nil {
       return true
@@ -78,8 +78,8 @@ func (atlas Atlas) ContainsNilNodes() bool {
   }
   return false
 }
-func (atlas Atlas) GetNilNodes() AtlasItems {
-  var itemSlice AtlasItems
+func (atlas Atlas) getNilNodes() atlasItems {
+  var itemSlice atlasItems
   for _, atlasItem := range atlas.Items {
     if atlasItem.Node == nil {
       itemSlice = append(itemSlice, atlasItem)
@@ -87,21 +87,21 @@ func (atlas Atlas) GetNilNodes() AtlasItems {
   }
   return itemSlice
 }
-func FitAtlasItems(items AtlasItems, w, h int) {
-  root := &Node{ X: 0, Y: 0, W: w, H: h}
+func fitAtlasItems(items atlasItems, w, h int) {
+  root := &node{ X: 0, Y: 0, W: w, H: h}
   for _, item := range items {
-    if node := root.FindNode(item.Width, item.Height); node != nil {
-      item.Node = node.SplitNode(item.Width, item.Height)
+    if node := root.findNode(item.Width, item.Height); node != nil {
+      item.Node = node.splitNode(item.Width, item.Height)
     }
   }
 }
-func (root *Node) FindNode(w, h int) *Node {
+func (root *node) findNode(w, h int) *node {
   if (root.Used) {
-    rightFind := root.Right.FindNode(w, h)
+    rightFind := root.Right.findNode(w, h)
     if rightFind != nil {
       return rightFind
     } else {
-      return root.Down.FindNode(w, h);
+      return root.Down.findNode(w, h);
     }
   } else if ((w <= root.W) && (h <= root.H)) {
     return root;
@@ -109,11 +109,11 @@ func (root *Node) FindNode(w, h int) *Node {
     return nil;
   }
 }
-func (node *Node) SplitNode(w, h int) *Node {
-  node.Used = true;
-  node.Down  = &Node{ Used: false, X: node.X, Y: node.Y + h, W: node.W, H: node.H - h,  }
-  node.Right = &Node{ Used: false, X: node.X + w, Y: node.Y, W: node.W - w, H: h,  }
-  return node
+func (this *node) splitNode(w, h int) *node {
+  this.Used = true;
+  this.Down  = &node{ Used: false, X: this.X, Y: this.Y + h, W: this.W, H: this.H - h,  }
+  this.Right = &node{ Used: false, X: this.X + w, Y: this.Y, W: this.W - w, H: h,  }
+  return this
 }
 
 func (atlas *Atlas) GobEncode() ([]byte, error) {
@@ -166,6 +166,7 @@ func (atlas *Atlas) readGob(b []byte) error {
   return nil
 }
 
+// SaveGobFile dumps atlas info to a gob file.
 func (atlas *Atlas) SaveGobFile(fileName string) error {
   outGob, err := os.Create(fileName)
   if err != nil {
@@ -186,6 +187,7 @@ func (atlas *Atlas) SaveGobFile(fileName string) error {
   return nil
 }
 
+// LoadGobFile populates an empty atlas per the contents of an exported gob file.
 func (atlas *Atlas) LoadGobFile(fileName string) error {
   b, err := ioutil.ReadFile(fileName)
   if err != nil {
@@ -201,9 +203,10 @@ func (atlas *Atlas) LoadGobFile(fileName string) error {
   return nil
 }
 
-func (atlas *Atlas) SaveImageFiles() error {
+// SaveImageFiles dumps all generated atlas images to disk.
+func (atlas *Atlas) SaveImageFiles(name string) error {
   for i, img := range atlas.Images {
-    outFilename := fmt.Sprintf("atlas%d.png", i)
+    outFilename := fmt.Sprintf("%s-%d.png", name, i)
     outFile, err := os.Create(outFilename)
     if err != nil {
       return fmt.Errorf("ratlas: couldn't create file %s: %v", outFilename, err)
@@ -217,6 +220,8 @@ func (atlas *Atlas) SaveImageFiles() error {
   }
   return nil
 }
+
+// LoadImageFiles loads a slice of strings that point to image files to load into the atlas.
 func (atlas *Atlas) LoadImageFiles(imageFilenames []string) error {
   for _, imageFilename := range imageFilenames {
     inFile, err := os.Open(imageFilename)
@@ -241,6 +246,7 @@ func (atlas *Atlas) LoadImageFiles(imageFilenames []string) error {
   return nil
 }
 
+// ReloadFont parses TTF data in order to generate a font.Face for the atlas.
 func (atlas *Atlas) ReloadFont(ttfData *[]byte) error {
   // parse file bytes into font
   f, err := truetype.Parse(*ttfData)
@@ -264,6 +270,7 @@ func (atlas *Atlas) ReloadFont(ttfData *[]byte) error {
   return nil
 }
 
+// ScaleNumbers scales the numbers within an Atlas and its AtlasItem(s), for example, if a loaded image was scaled since saving the atlas info.
 func (atlas *Atlas) ScaleNumbers(v float32) {
   atlas.FontPt *= float64(v)
   atlas.Pad = int(float32(atlas.Pad)*v)
@@ -283,26 +290,30 @@ func (atlas *Atlas) ScaleNumbers(v float32) {
   fmt.Println("ratlas: scaled atlas numbers by", v)
 }
 
+// Kern returns a float32 of the kern distance between two runes.
 func (atlas *Atlas) Kern(a, b rune) float32 {
   return fixedFloat(atlas.Face.Kern(a, b))
 }
 
+// Ascent returns a float32 of the distance from the top of a line to its baseline.
 func (atlas *Atlas) Ascent() float32 {
   faceMetrics := atlas.Face.Metrics()
   return fixedFloat(faceMetrics.Ascent)
 }
 
+// Height returns a float32 of the recommended amount of vertical space between two lines of text.
 func (atlas *Atlas) Height() float32 {
   faceMetrics := atlas.Face.Metrics()
   return fixedFloat(faceMetrics.Height)
 }
 
+// Descent returns a float32 of the distance from the bottom of a line to its baseline.
 func (atlas *Atlas) Descent() float32 {
   faceMetrics := atlas.Face.Metrics()
   return fixedFloat(faceMetrics.Descent)
 }
 
-// FontAtlasFromRunes returns a Atlas of a given font for a given slice of runes.
+// New returns a Atlas of a given TTF data, image dimensions, and a given slice of runes.
 func New(ttfData *[]byte, fontPt float64, imgWidth, imgHeight, pad int, runes []rune) Atlas {
   // create atlas
   var atlas Atlas
@@ -348,19 +359,19 @@ func New(ttfData *[]byte, fontPt float64, imgWidth, imgHeight, pad int, runes []
   }
   
   // while we have glyphs that aren't on a sheet, create new sheets for them
-  for atlas.ContainsNilNodes() {
+  for atlas.containsNilNodes() {
     // create new atlas image sheet
     atlas.Images = append(atlas.Images, image.NewGray(image.Rect(0, 0, imgWidth, imgHeight)))
     imageIndex := len(atlas.Images) - 1
     draw.Draw(atlas.Images[imageIndex], atlas.Images[imageIndex].Bounds(), image.Black, image.Point{}, draw.Src)
     
     // sort nil nodes per AtlasItems sort implementation
-    itemSlice := atlas.GetNilNodes()
+    itemSlice := atlas.getNilNodes()
     sort.Sort(itemSlice)
     
     // give each rune a position within an image sheet
     // if it doesn't fit on current sheet, node remains nil
-    FitAtlasItems(itemSlice, imgWidth, imgHeight)
+    fitAtlasItems(itemSlice, imgWidth, imgHeight)
     
     // attempt to copy AtlasItems into atlas sheet, until full
     for _, atlasItem := range itemSlice {
