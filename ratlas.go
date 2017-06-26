@@ -8,7 +8,6 @@ import (
   "bytes"
   "sort"
   "fmt"
-  "log"
   "os"
   "io/ioutil"
   
@@ -42,7 +41,6 @@ type AtlasItem struct {
 
 type Atlas struct {
   Face font.Face
-  FontFile string
   FontPt float64
   FontRes float64
   Pad int
@@ -121,15 +119,7 @@ func (node *Node) SplitNode(w, h int) *Node {
 func (atlas *Atlas) GobEncode() ([]byte, error) {
     w := new(bytes.Buffer)
     encoder := gob.NewEncoder(w)
-    err := encoder.Encode(atlas.FontFile)
-    if err != nil {
-        return nil, err
-    }
-    err = encoder.Encode(atlas.FontPt)
-    if err != nil {
-        return nil, err
-    }
-    err = encoder.Encode(atlas.FontRes)
+    err := encoder.Encode(atlas.FontPt)
     if err != nil {
         return nil, err
     }
@@ -146,15 +136,7 @@ func (atlas *Atlas) GobEncode() ([]byte, error) {
 func (atlas *Atlas) GobDecode(buf []byte) error {
     r := bytes.NewBuffer(buf)
     decoder := gob.NewDecoder(r)
-    err := decoder.Decode(&atlas.FontFile)
-    if err!=nil {
-        return err
-    }
-    err = decoder.Decode(&atlas.FontPt)
-    if err!=nil {
-        return err
-    }
-    err = decoder.Decode(&atlas.FontRes)
+    err := decoder.Decode(&atlas.FontPt)
     if err!=nil {
         return err
     }
@@ -165,125 +147,125 @@ func (atlas *Atlas) GobDecode(buf []byte) error {
     return decoder.Decode(&atlas.Items)
 }
 
-func (atlas *Atlas) createGob() []byte {
+func (atlas *Atlas) createGob() ([]byte, error) {
   buffer := new(bytes.Buffer)
   enc := gob.NewEncoder(buffer)
   err := enc.Encode(atlas)
   if err != nil {
-      log.Println("Encode error:", err)
+      return nil, fmt.Errorf("ratlas: encode error: %v", err)
   }
-  return buffer.Bytes()
+  return buffer.Bytes(), nil
 }
-func (atlas *Atlas) readGob(b []byte) {
+func (atlas *Atlas) readGob(b []byte) error {
   buffer := bytes.NewBuffer(b)
   dec := gob.NewDecoder(buffer)
   err := dec.Decode(atlas)
   if err != nil {
-    log.Println("Decode error:", err)
+    return fmt.Errorf("ratlas: decode error: %v", err)
   }
+  return nil
 }
 
-func (atlas *Atlas) SaveGobFile(outFile string) {
-  outGob, err := os.Create(outFile)
+func (atlas *Atlas) SaveGobFile(fileName string) error {
+  outGob, err := os.Create(fileName)
   if err != nil {
-    log.Println("Couldn't create file:", err)
-    return
+    return fmt.Errorf("ratlas: couldn't create file %s: %v", fileName, err)
   }
   defer outGob.Close()
-  numBytes, err := outGob.Write(atlas.createGob())
+  
+  gobBytes, err := atlas.createGob()
   if err != nil {
-    log.Println("Couldn't write file:", err)
-    return
+    return err
   }
-  log.Println("Wrote", outFile, numBytes)
-}
-func (atlas *Atlas) LoadGobFile(fileName string) {
-  b, err := ioutil.ReadFile(fileName)
+  
+  numBytes, err := outGob.Write(gobBytes)
   if err != nil {
-    log.Println("Couldn't read file:", err)
-    return
+    return fmt.Errorf("ratlas: couldn't write file %s: %v", fileName, err)
   }
-  atlas.readGob(b)
-  log.Println("Loaded", fileName)
+  fmt.Println("ratlas: wrote", fileName, numBytes)
+  return nil
 }
 
-func (atlas *Atlas) SaveImageFiles() {
+func (atlas *Atlas) LoadGobFile(fileName string) error {
+  b, err := ioutil.ReadFile(fileName)
+  if err != nil {
+    return fmt.Errorf("ratlas: couldn't read file %s: %v", fileName, err)
+  }
+  
+  err = atlas.readGob(b)
+  if err != nil {
+    return err
+  }
+  
+  fmt.Println("ratlas: loaded", fileName)
+  return nil
+}
+
+func (atlas *Atlas) SaveImageFiles() error {
   for i, img := range atlas.Images {
-    outFilename := fmt.Sprintf("%s-%d.png", atlas.FontFile, i)
+    outFilename := fmt.Sprintf("atlas%d.png", i)
     outFile, err := os.Create(outFilename)
     if err != nil {
-      log.Println("Couldn't create file:", err)
-      return
+      return fmt.Errorf("ratlas: couldn't create file %s: %v", outFilename, err)
     }
     defer outFile.Close()
     err = png.Encode(outFile, img)
     if err != nil {
-      log.Println("Couldn't encode png:", err)
-      return
+      return fmt.Errorf("ratlas: couldn't encode png:", err)
     }
-    log.Println("Wrote", outFilename)
+    fmt.Println("ratlas: wrote", outFilename)
   }
+  return nil
 }
-func (atlas *Atlas) LoadImageFiles(imageFilenames []string) {
+func (atlas *Atlas) LoadImageFiles(imageFilenames []string) error {
   for _, imageFilename := range imageFilenames {
     inFile, err := os.Open(imageFilename)
     if err != nil {
-      log.Println("Couldn't open file:", err)
-      return
+      return fmt.Errorf("ratlas: couldn't open file %s: %v", imageFilename, err)
     }
     defer inFile.Close()
     
     img, formatString, err := image.Decode(inFile)
     if err != nil {
-      log.Println("Couldn't decode image:", err)
-      return
+      return fmt.Errorf("ratlas: couldn't decode image: %v", err)
     }
     
     dimg, ok := img.(draw.Image)
     if !ok {
-      log.Printf("Couldn't create drawable image from %s\n", imageFilename)
-      return
+      return fmt.Errorf("ratlas: couldn't create drawable image from %s\n", imageFilename)
     }
     
     atlas.Images = append(atlas.Images, dimg)
-    log.Printf("Loaded %s as %s\n", imageFilename, formatString)
+    fmt.Printf("ratlas: loaded %s as %s\n", imageFilename, formatString)
   }
+  return nil
 }
 
-func (atlas *Atlas) ReloadFont() {
-  fontFile := atlas.FontFile
-  
-  // load font file bytes
-  bytes, err := ioutil.ReadFile(fontFile)
-  if err != nil {
-    log.Println("Couldn't read file:", err)
-    return
-  }
-  
+func (atlas *Atlas) ReloadFont(ttfData *[]byte) error {
   // parse file bytes into font
-  f, err := truetype.Parse(bytes)
+  f, err := truetype.Parse(*ttfData)
   if err != nil {
-    log.Println("Couldn't parse font:", err)
-    return
+    return fmt.Errorf("ratlas: couldn't parse font: %v", err)
   }
   
   opts := &truetype.Options{
     Size: atlas.FontPt,
-    DPI: atlas.FontRes,
+    DPI: 72.0,
     Hinting: font.HintingNone,
     GlyphCacheEntries: 512,
     SubPixelsX: 4,
     SubPixelsY: 1,
   }
   face := truetype.NewFace(f, opts)
-  log.Println("Loaded and parsed", fontFile)
+  fmt.Println("ratlas: loaded and parsed TTF data")
   
   atlas.Face = face
+  
+  return nil
 }
 
 func (atlas *Atlas) ScaleNumbers(v float32) {
   atlas.FontPt *= float64(v)
-  atlas.FontRes *= float64(v)
   atlas.Pad = int(float32(atlas.Pad)*v)
   
   for _, atlasItem := range atlas.Items {
@@ -298,21 +280,34 @@ func (atlas *Atlas) ScaleNumbers(v float32) {
     atlasItem.Node.W = atlasItem.Width
     atlasItem.Node.H = atlasItem.Height
   }
-  log.Println("Scaled Atlas numbers by", v)
+  fmt.Println("ratlas: scaled atlas numbers by", v)
 }
 
 func (atlas *Atlas) Kern(a, b rune) float32 {
   return fixedFloat(atlas.Face.Kern(a, b))
 }
 
+func (atlas *Atlas) Ascent() float32 {
+  faceMetrics := atlas.Face.Metrics()
+  return fixedFloat(faceMetrics.Ascent)
+}
+
+func (atlas *Atlas) Height() float32 {
+  faceMetrics := atlas.Face.Metrics()
+  return fixedFloat(faceMetrics.Height)
+}
+
+func (atlas *Atlas) Descent() float32 {
+  faceMetrics := atlas.Face.Metrics()
+  return fixedFloat(faceMetrics.Descent)
+}
+
 // FontAtlasFromRunes returns a Atlas of a given font for a given slice of runes.
-func New(fontFileName string, fontPt, fontRes float64, imgWidth, imgHeight, pad int, runes []rune) Atlas {
+func New(ttfData *[]byte, fontPt float64, imgWidth, imgHeight, pad int, runes []rune) Atlas {
   // create atlas
   var atlas Atlas
-  atlas.FontFile = fontFileName
   atlas.FontPt = fontPt
-  atlas.FontRes = fontRes
-  atlas.ReloadFont()
+  atlas.ReloadFont(ttfData)
   atlas.Pad = pad
   atlas.Items = make(map[rune]*AtlasItem)
   
