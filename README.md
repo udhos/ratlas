@@ -1,7 +1,9 @@
 # ratlas
 Golang text glyph/rune atlas image generator.
 
-Package ratlas generates rune atlas images given a TTF font.
+Generates rune atlas images given a TTF font.
+
+![img1](http://i.imgur.com/QMN1bIV.png)
 
 ## Usage Examples
 To build the examples, enter the example directory and type:
