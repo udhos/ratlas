@@ -1,6 +1,6 @@
-// Package ratlas generates rune atlas images given the glyphs of a ttf font.
-// Examples are still being written to test the accuracy of exported data.
-// Support for other font formats and export formats pending.
+// Package ratlas generates rune atlas images given a slice of runes and a TTF font.
+// Atlas and atlas item information can also be saved and loaded.
+// Values are stored as float32 for ease of use with OpenGL.
 package ratlas
 
 import (
@@ -312,7 +312,7 @@ func (atlas *Atlas) Descent() float32 {
   faceMetrics := atlas.Face.Metrics()
   return fixedFloat(faceMetrics.Descent)
 }
-
+r
 // New returns a Atlas of a given TTF data, image dimensions, and a given slice of runes.
 func New(ttfData *[]byte, fontPt float64, imgWidth, imgHeight, pad int, runes []rune) Atlas {
   // create atlas
