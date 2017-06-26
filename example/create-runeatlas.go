@@ -17,6 +17,6 @@ func main() {
   }
   
   atlas := ratlas.New(&ttfData, 288.0, 2048, 2048, 16, runes)
-  atlas.SaveGobFile(fmt.Sprintf("%s.gob", fontFile))
+  atlas.SaveGobFile(fmt.Sprintf("%s-example.gob", fontFile))
   atlas.SaveImageFiles()
 }
