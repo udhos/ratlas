@@ -12,7 +12,6 @@ import (
 
   "github.com/go-gl/gl/v4.1-core/gl"
   "github.com/go-gl/glfw/v3.2/glfw"
-  _ "github.com/go-gl/mathgl/mgl32"
   
   "github.com/vrav/ratlas"
 )
@@ -35,7 +34,7 @@ func runeQuad(item *ratlas.AtlasItem, posX, posY, scale float32) []float32 {
   w, h := float32(item.Width), float32(item.Height)
   
   return []float32{
-    // X Y   U V  scale
+    // X Y   U V
     screenX(posX), screenY(posY),                      item.PercentPosX, item.PercentPosY+item.PercentHeight,
     screenX(posX + w*scale), screenY(posY + h*scale),  item.PercentPosX+item.PercentWidth, item.PercentPosY,
     screenX(posX), screenY(posY + h*scale),            item.PercentPosX, item.PercentPosY,
