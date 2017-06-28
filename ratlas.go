@@ -312,7 +312,7 @@ func (atlas *Atlas) Descent() float32 {
   faceMetrics := atlas.Face.Metrics()
   return fixedFloat(faceMetrics.Descent)
 }
-r
+
 // New returns a Atlas of a given TTF data, image dimensions, and a given slice of runes.
 func New(ttfData *[]byte, fontPt float64, imgWidth, imgHeight, pad int, runes []rune) Atlas {
   // create atlas
