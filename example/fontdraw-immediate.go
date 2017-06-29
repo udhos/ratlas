@@ -247,7 +247,6 @@ func main() {
     
     // in this example we generate a mesh and upload it every every frame.
     var frameMesh TextMesh
-    frameMesh.TextBox(&atlas, "Test string!", float32(mX), float32(mY), 250, 250, 150.0, 1.0, 0.8, 1.0, 0.5)
     
     // generate gently swaying lorem ipsum text at differen tsizes across the screen.
     yLoop: for y := windowHeight; y > windowHeight-401; y -= 200 {
@@ -262,6 +261,10 @@ func main() {
         }
       }
     }
+    
+    flashAmount := math.Abs(math.Sin(time))
+    frameMesh.TextBox(&atlas, "Test string!", float32(mX), float32(mY), 250, 250, 150.0, 1.0, 0.8, 1.0, float32(flashAmount))
+    
     numVertices := len(frameMesh)/9
     
     // now that we've calculated a new mesh, let's upload it to the GPU
