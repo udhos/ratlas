@@ -3,7 +3,6 @@ package main
 import (
   "runtime"
   "fmt"
-  "log"
   "strings"
   "io/ioutil"
   
@@ -179,7 +178,7 @@ func main() {
   // load the texture into GL
   texture, err := newTexture(atlas.Images[0])
   if err != nil {
-    log.Fatalln(err)
+    panic(err)
   }
   
   // generate vao/vbo
