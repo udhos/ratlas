@@ -180,9 +180,6 @@ func main() {
     panic(err)
   }
   
-  // the important bit. generate a mesh of exampleText's characters.
-  
-  
   // loading up OpenGL.
   
   // Configure the vertex and fragment shaders
@@ -248,13 +245,15 @@ func main() {
     mX, mY := window.GetCursorPos()
     mY = float64(windowHeight) - mY
     
+    // in this example we generate a mesh and upload it every every frame.
     var frameMesh TextMesh
-    
     frameMesh.TextBox(&atlas, "Test string!", float32(mX), float32(mY), 250, 250, 150.0, 1.0, 0.8, 1.0, 0.5)
     
+    // generate gently swaying lorem ipsum text at differen tsizes across the screen.
     yLoop: for y := windowHeight; y > windowHeight-401; y -= 200 {
       for x := 0; x < windowWidth; x += 200 {
-        pX, pY := float32(float64(x) + 6.0*math.Sin(float64(x)+time*3.0)), float32(float64(y) + 4.0*math.Cos(float64(y)+time))
+        pX := float32(float64(x) + 6.0*math.Sin(float64(x)+time*3.0))
+        pY := float32(float64(y) + 4.0*math.Cos(float64(y)+time))
         wW, wH := float32(windowWidth), float32(windowHeight)
         fontPt := 10.0 + 20.0 * (float32(x)/float32(windowWidth))
         frameMesh.TextBox(&atlas, exampleText, pX, pY, 200, 200, fontPt, pX/wW, pY/wH, 1.0, 0.8)
@@ -263,10 +262,11 @@ func main() {
         }
       }
     }
-    
     numVertices := len(frameMesh)/9
     
-    // option 1: glBufferData
+    // now that we've calculated a new mesh, let's upload it to the GPU
+    
+    // option 1: glBufferData every frame
     // gl.BufferData(gl.ARRAY_BUFFER, len(frameMesh)*4, gl.Ptr(frameMesh), gl.STREAM_DRAW)
     
     // option 2: glBufferSubData at same size or less
@@ -282,17 +282,15 @@ func main() {
     gl.ActiveTexture(gl.TEXTURE0)
     gl.BindTexture(gl.TEXTURE_2D, texture)
     
+    // don't try to draw more than max vertices.
     verticesToDraw := int32(numVertices)
     if numVertices > maxVertices {
       verticesToDraw = int32(maxVertices - maxVertices%3)
     }
-    
     gl.DrawArrays(gl.TRIANGLES, 0, verticesToDraw)
     
     glfw.PollEvents()
     window.SwapBuffers()
-    
-    // time.Sleep(time.Second/time.Duration(windowFps) - time.Since(t))
   }
   
   gl.DeleteTextures(1, &texture)
