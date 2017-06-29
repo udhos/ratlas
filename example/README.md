@@ -9,4 +9,5 @@ In action:
 This slightly more robust example shows immediate mode drawing, where the mesh used to render text is generated every frame and streamed to the GPU. It's more costly than retained mode rendering, but it's easy to work with. The text has been animated to show off one potential usability advantage to regenerating the text mesh every frame.
 
 In action:
+
 ![img1](http://i.imgur.com/JNAPaXg.png)
